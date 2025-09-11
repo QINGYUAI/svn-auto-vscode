@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { setTimeout, clearTimeout } from 'timers';
 import { VcsManager } from './vcsManager';
-import { minimatch } from 'minimatch';
+import minimatch from 'minimatch';
 import { ConfigManager } from './configManager';
 import { StatusBarManager } from './statusBarManager';
 import { CommitTemplateManager } from './commitTemplateManager';
