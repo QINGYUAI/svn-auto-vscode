@@ -1,0 +1,196 @@
+{
+  "name": "svn-git-auto-commit",
+  "displayName": "SVN/Git 自动提交",
+  "description": "VSCode插件，支持SVN和Git的自动提交功能",
+  "version": "0.1.0",
+  "publisher": "example-publisher",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:svn-auto-commit.commit",
+    "onCommand:svn-auto-commit.autoCommit",
+    "onCommand:svn-auto-commit.update",
+    "onCommand:svn-auto-commit.viewHistory"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "svn-auto-commit.commit",
+        "title": "提交更改",
+        "category": "SVN/Git 自动提交"
+      },
+      {
+        "command": "svn-auto-commit.autoCommit",
+        "title": "启用/禁用自动提交",
+        "category": "SVN/Git 自动提交"
+      },
+      {
+        "command": "svn-auto-commit.update",
+        "title": "更新/拉取",
+        "category": "SVN/Git 自动提交"
+      },
+      {
+        "command": "svn-auto-commit.viewHistory",
+        "title": "查看历史",
+        "category": "SVN/Git 自动提交"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "svn-auto-commit.commit",
+        "key": "ctrl+alt+c",
+        "mac": "cmd+alt+c"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "svn-auto-commit.commit",
+          "group": "svn-auto-commit"
+        },
+        {
+          "command": "svn-auto-commit.update",
+          "group": "svn-auto-commit"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "SVN/Git 自动提交",
+      "properties": {
+        "svn-auto-commit.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否启用插件"
+        },
+        "svn-auto-commit.defaultVCS": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "svn",
+            "git"
+          ],
+          "default": "auto",
+          "description": "默认版本控制系统"
+        },
+        "svn-auto-commit.autoDetect": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否自动检测版本控制系统"
+        },
+        "svn-auto-commit.commitShortcut": {
+          "type": "string",
+          "default": "ctrl+alt+c",
+          "description": "提交快捷键"
+        },
+        "svn-auto-commit.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否在状态栏显示插件状态"
+        },
+        "svn-auto-commit.confirmBeforeCommit": {
+          "type": "boolean",
+          "default": true,
+          "description": "提交前是否确认"
+        },
+        "svn-auto-commit.svn.path": {
+          "type": "string",
+          "default": "svn",
+          "description": "SVN命令路径"
+        },
+        "svn-auto-commit.svn.username": {
+          "type": "string",
+          "default": "",
+          "description": "SVN用户名"
+        },
+        "svn-auto-commit.svn.password": {
+          "type": "string",
+          "default": "",
+          "description": "SVN密码（加密存储）"
+        },
+        "svn-auto-commit.svn.autoUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "提交前是否自动更新"
+        },
+        "svn-auto-commit.svn.addUnversioned": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否自动添加未版本化文件"
+        },
+        "svn-auto-commit.svn.ignoreExternals": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否忽略外部定义"
+        },
+        "svn-auto-commit.git.path": {
+          "type": "string",
+          "default": "git",
+          "description": "Git命令路径"
+        },
+        "svn-auto-commit.git.username": {
+          "type": "string",
+          "default": "",
+          "description": "Git用户名"
+        },
+        "svn-auto-commit.git.email": {
+          "type": "string",
+          "default": "",
+          "description": "Git邮箱"
+        },
+        "svn-auto-commit.git.autoPull": {
+          "type": "boolean",
+          "default": true,
+          "description": "提交前是否自动拉取"
+        },
+        "svn-auto-commit.git.autoPush": {
+          "type": "boolean",
+          "default": false,
+          "description": "提交后是否自动推送"
+        },
+        "svn-auto-commit.git.addAll": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否自动添加所有变更"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.0.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^16.11.7",
+    "@types/vscode": "^1.73.0",
+    "@typescript-eslint/eslint-plugin": "^5.42.0",
+    "@typescript-eslint/parser": "^5.42.0",
+    "@vscode/test-electron": "^2.2.0",
+    "eslint": "^8.26.0",
+    "glob": "^8.0.3",
+    "mocha": "^10.1.0",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.8.4",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "dependencies": {
+    "keytar": "^7.7.0",
+    "minimatch": "^10.0.3"
+  }
+}
