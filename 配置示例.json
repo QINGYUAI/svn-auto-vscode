@@ -1,0 +1,83 @@
+{
+  "// 基本配置": "插件的基础设置",
+  "svn-auto-commit.enabled": true,
+  "svn-auto-commit.defaultVCS": "auto",
+  "svn-auto-commit.autoDetect": true,
+  "svn-auto-commit.showStatusBar": true,
+  "svn-auto-commit.confirmBeforeCommit": true,
+
+  "// SVN 特定配置": "SVN 版本控制系统相关设置",
+  "svn-auto-commit.svn.path": "svn",
+  "svn-auto-commit.svn.username": "",
+  "svn-auto-commit.svn.password": "",
+  "svn-auto-commit.svn.autoUpdate": true,
+  "svn-auto-commit.svn.addUnversioned": false,
+  "svn-auto-commit.svn.ignoreExternals": true,
+
+  "// Git 特定配置": "Git 版本控制系统相关设置",
+  "svn-auto-commit.git.path": "git",
+  "svn-auto-commit.git.username": "",
+  "svn-auto-commit.git.email": "",
+  "svn-auto-commit.git.autoPull": true,
+  "svn-auto-commit.git.autoPush": false,
+  "svn-auto-commit.git.addAll": false,
+
+  "// 自动提交配置": "自动提交功能相关设置",
+  "svn-auto-commit.autoCommit.enabled": false,
+  "svn-auto-commit.autoCommit.delay": 30,
+  "svn-auto-commit.autoCommit.showNotification": true,
+  "svn-auto-commit.autoCommit.messageTemplate": "自动提交: {fileList} - {datetime}",
+  "svn-auto-commit.autoCommit.ignorePatterns": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.svn/**",
+    "**/*.log",
+    "**/dist/**",
+    "**/build/**",
+    "**/.env",
+    "**/.DS_Store"
+  ],
+
+  "// 提交信息配置": "提交信息模板和验证相关设置",
+  "svn-auto-commit.commit.template": "[{type}] {message} - {username} ({date})",
+  "svn-auto-commit.commit.username": "",
+  "svn-auto-commit.commit.validateMessage": false,
+  "svn-auto-commit.commit.minLength": 5,
+  "svn-auto-commit.commit.maxLength": 100,
+  "svn-auto-commit.commit.requirePrefix": false,
+  "svn-auto-commit.commit.allowedPrefixes": [
+    "feat",
+    "fix", 
+    "docs",
+    "style",
+    "refactor",
+    "perf",
+    "test",
+    "chore",
+    "revert"
+  ],
+
+  "// 上下文感知提交配置": "智能提交功能相关设置",
+  "svn-auto-commit.contextAware.enabled": true,
+  "svn-auto-commit.contextAware.autoSelectCurrentFile": true,
+  "svn-auto-commit.contextAware.autoGenerateMessage": true,
+  "svn-auto-commit.contextAware.skipFileSelection": false,
+
+  "// 提交信息模板配置": "提交信息自动生成相关设置",
+  "svn-auto-commit.commit.template": "更新 {fileList}",
+  "svn-auto-commit.commit.username": "",
+  "svn-auto-commit.commit.validateMessage": false,
+  "svn-auto-commit.commit.minLength": 5,
+  "svn-auto-commit.commit.maxLength": 100,
+  "svn-auto-commit.commit.requirePrefix": false,
+  "svn-auto-commit.commit.allowedPrefixes": [
+    "feat", "fix", "docs", "style", "refactor", "perf", "test", "chore", "revert"
+  ],
+
+  "// 状态栏配置": "状态栏显示相关设置",
+  "svn-auto-commit.statusBar.enabled": true,
+  "svn-auto-commit.statusBar.showBranch": true,
+  "svn-auto-commit.statusBar.showUpdate": true,
+  "svn-auto-commit.statusBar.showCommit": true,
+  "svn-auto-commit.statusBar.showHistory": true
+}

@@ -4,8 +4,17 @@
   "description": "VSCode插件，支持SVN和Git的自动提交功能",
   "version": "0.1.0",
   "publisher": "example-publisher",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/svn-git-auto-commit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/example/svn-git-auto-commit/issues"
+  },
+  "homepage": "https://github.com/example/svn-git-auto-commit#readme",
+  "license": "MIT",
   "engines": {
-    "vscode": "^1.60.0"
+    "vscode": "^1.73.0"
   },
   "categories": [
     "SCM Providers",
@@ -13,10 +22,17 @@
   ],
   "activationEvents": [
     "onStartupFinished",
+    "workspaceContains:.git",
+    "workspaceContains:.svn",
     "onCommand:svn-auto-commit.commit",
     "onCommand:svn-auto-commit.autoCommit",
     "onCommand:svn-auto-commit.update",
-    "onCommand:svn-auto-commit.viewHistory"
+    "onCommand:svn-auto-commit.viewHistory",
+    "onCommand:svn-auto-commit.showMenu",
+    "onCommand:svn-auto-commit.showBranchInfo",
+    "onCommand:svn-auto-commit.resolveConflict",
+    "onCommand:svn-auto-commit.openSettings",
+    "onCommand:svn-auto-commit.setupSvnAuth"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -24,40 +40,218 @@
       {
         "command": "svn-auto-commit.commit",
         "title": "提交更改",
-        "category": "SVN/Git 自动提交"
+        "category": "SVN/Git 自动提交",
+        "icon": "$(git-commit)"
       },
       {
         "command": "svn-auto-commit.autoCommit",
         "title": "启用/禁用自动提交",
-        "category": "SVN/Git 自动提交"
+        "category": "SVN/Git 自动提交",
+        "icon": "$(sync-ignored)"
       },
       {
         "command": "svn-auto-commit.update",
         "title": "更新/拉取",
-        "category": "SVN/Git 自动提交"
+        "category": "SVN/Git 自动提交",
+        "icon": "$(sync)"
       },
       {
         "command": "svn-auto-commit.viewHistory",
         "title": "查看历史",
-        "category": "SVN/Git 自动提交"
+        "category": "SVN/Git 自动提交",
+        "icon": "$(history)"
+      },
+      {
+        "command": "svn-auto-commit.showMenu",
+        "title": "显示操作菜单",
+        "category": "SVN/Git 自动提交",
+        "icon": "$(menu)"
+      },
+      {
+        "command": "svn-auto-commit.showBranchInfo",
+        "title": "显示分支信息",
+        "category": "SVN/Git 自动提交",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "svn-auto-commit.resolveConflict",
+        "title": "解决冲突",
+        "category": "SVN/Git 自动提交",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "svn-auto-commit.openSettings",
+        "title": "打开设置",
+        "category": "SVN/Git 自动提交",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "svn-auto-commit.setupSvnAuth",
+        "title": "设置SVN认证",
+        "category": "SVN/Git 自动提交",
+        "icon": "$(key)"
       }
     ],
     "keybindings": [
       {
         "command": "svn-auto-commit.commit",
-        "key": "ctrl+alt+c",
-        "mac": "cmd+alt+c"
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "svn-auto-commit.update",
+        "key": "ctrl+alt+u",
+        "mac": "cmd+alt+u",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "svn-auto-commit.viewHistory",
+        "key": "ctrl+alt+h",
+        "mac": "cmd+alt+h",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "svn-auto-commit.showMenu",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "!terminalFocus"
       }
     ],
     "menus": {
-      "explorer/context": [
+      "commandPalette": [
         {
           "command": "svn-auto-commit.commit",
-          "group": "svn-auto-commit"
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.autoCommit",
+          "when": "true"
         },
         {
           "command": "svn-auto-commit.update",
-          "group": "svn-auto-commit"
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.viewHistory",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.showMenu",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.showBranchInfo",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.resolveConflict",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.openSettings",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.setupSvnAuth",
+          "when": "true"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "svn-auto-commit.commit",
+          "group": "svn-auto-commit@1",
+          "when": "explorerResourceIsFolder || !explorerResourceIsRoot"
+        },
+        {
+          "command": "svn-auto-commit.update",
+          "group": "svn-auto-commit@2",
+          "when": "explorerResourceIsFolder || !explorerResourceIsRoot"
+        },
+        {
+          "command": "svn-auto-commit.viewHistory",
+          "group": "svn-auto-commit@3",
+          "when": "!explorerResourceIsFolder"
+        },
+        {
+          "command": "svn-auto-commit.showMenu",
+          "group": "svn-auto-commit@4",
+          "when": "explorerResourceIsFolder"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "svn-auto-commit.commit",
+          "group": "svn-auto-commit@1",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "svn-auto-commit.viewHistory",
+          "group": "svn-auto-commit@2",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "svn-auto-commit.resolveConflict",
+          "group": "svn-auto-commit@3",
+          "when": "editorTextFocus"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "svn-auto-commit.commit",
+          "group": "navigation@1",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.update",
+          "group": "navigation@2",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.viewHistory",
+          "group": "navigation@3",
+          "when": "true"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "svn-auto-commit.commit",
+          "group": "svn-auto-commit@1",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.viewHistory",
+          "group": "svn-auto-commit@2",
+          "when": "true"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "svn-auto-commit.commit",
+          "group": "navigation@1",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.update",
+          "group": "navigation@2",
+          "when": "true"
+        },
+        {
+          "command": "svn-auto-commit.autoCommit",
+          "group": "navigation@3",
+          "when": "true"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "svn-auto-commit.showMenu",
+          "group": "navigation@1",
+          "when": "view == workbench.scm"
+        },
+        {
+          "command": "svn-auto-commit.openSettings",
+          "group": "navigation@2",
+          "when": "view == workbench.scm"
         }
       ]
     },
@@ -86,8 +280,8 @@
         },
         "svn-auto-commit.commitShortcut": {
           "type": "string",
-          "default": "ctrl+alt+c",
-          "description": "提交快捷键"
+          "default": "ctrl+alt+v",
+          "description": "提交快捷键 (V for Version control)"
         },
         "svn-auto-commit.showStatusBar": {
           "type": "boolean",
@@ -158,14 +352,72 @@
           "type": "boolean",
           "default": false,
           "description": "是否自动添加所有变更"
+        },
+        "svn-auto-commit.contextAware.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否启用上下文感知提交"
+        },
+        "svn-auto-commit.contextAware.autoSelectCurrentFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "在编辑器中提交时是否自动选择当前文件"
+        },
+        "svn-auto-commit.contextAware.autoGenerateMessage": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否自动生成提交信息"
+        },
+        "svn-auto-commit.contextAware.skipFileSelection": {
+          "type": "boolean",
+          "default": false,
+          "description": "当只有当前文件变更时是否跳过文件选择"
+        },
+        "svn-auto-commit.commit.template": {
+          "type": "string",
+          "default": "更新 {fileList}",
+          "description": "提交信息模板，支持变量: {date}, {time}, {datetime}, {username}, {fileCount}, {fileList}, {changeType}"
+        },
+        "svn-auto-commit.commit.username": {
+          "type": "string",
+          "default": "",
+          "description": "提交用户名"
+        },
+        "svn-auto-commit.commit.validateMessage": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否验证提交信息格式"
+        },
+        "svn-auto-commit.commit.minLength": {
+          "type": "number",
+          "default": 5,
+          "description": "提交信息最小长度"
+        },
+        "svn-auto-commit.commit.maxLength": {
+          "type": "number",
+          "default": 100,
+          "description": "提交信息最大长度"
+        },
+        "svn-auto-commit.commit.requirePrefix": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否要求提交信息前缀"
+        },
+        "svn-auto-commit.commit.allowedPrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "chore", "revert"],
+          "description": "允许的提交信息前缀"
         }
       }
     }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
+    "compile": "webpack --mode development",
+    "watch": "webpack --watch --mode development",
     "package": "webpack --mode production --devtool hidden-source-map",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
@@ -182,7 +434,7 @@
     "@typescript-eslint/parser": "^5.42.0",
     "@vscode/test-electron": "^2.2.0",
     "eslint": "^8.26.0",
-    "glob": "7.2.0",
+    "glob": "^10.3.0",
     "mocha": "^10.1.0",
     "ts-loader": "^9.4.1",
     "typescript": "^4.8.4",
@@ -190,7 +442,7 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
-    "keytar": "^7.7.0",
+    "keytar": "^7.9.0",
     "minimatch": "3.1.2"
   }
 }

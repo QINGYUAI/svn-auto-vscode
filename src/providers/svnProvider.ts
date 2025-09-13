@@ -101,14 +101,8 @@ export class SvnProvider implements VcsProvider {
         await this.addUnversionedFiles();
       }
       
-      // 构建提交命令
+      // 构建提交命令 - 移除 --ignore-externals 选项，因为 commit 命令不支持此选项
       let args = ['commit', '-m', message];
-      
-      // 是否忽略外部定义
-      const ignoreExternals = this.configManager.get<boolean>('svn.ignoreExternals', true);
-      if (ignoreExternals) {
-        args.push('--ignore-externals');
-      }
       
       // 如果指定了文件，则只提交这些文件
       if (files && files.length > 0) {
@@ -135,7 +129,16 @@ export class SvnProvider implements VcsProvider {
   // 执行更新操作
   public async update(): Promise<boolean> {
     try {
-      const result = await this.executeCommand('update');
+      // 构建更新命令
+      let args = ['update'];
+      
+      // 是否忽略外部定义 - 这个选项应该用于 update 命令
+      const ignoreExternals = this.configManager.get<boolean>('svn.ignoreExternals', true);
+      if (ignoreExternals) {
+        args.push('--ignore-externals');
+      }
+      
+      const result = await this.executeCommand(...args);
       vscode.window.showInformationMessage('SVN更新成功');
       return true;
     } catch (error) {
@@ -249,8 +252,8 @@ export class SvnProvider implements VcsProvider {
   }
 
   // 执行SVN命令
-  private executeCommand(...args: string[]): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
+  private async executeCommand(...args: string[]): Promise<string> {
+    return new Promise<string>(async (resolve, reject) => {
       // 获取SVN用户名和密码
       const username = this.configManager.get<string>('svn.username', '');
       const commandArgs = [...args];
@@ -259,12 +262,28 @@ export class SvnProvider implements VcsProvider {
       if (username) {
         commandArgs.unshift('--username', username);
         
+        // 尝试从安全存储中获取密码
+        try {
+          const password = await this.configManager.getCredential(username);
+          if (password) {
+            commandArgs.unshift('--password', password);
+          }
+        } catch (error) {
+          console.log('未找到存储的密码，将提示用户输入');
+        }
+        
         // 添加非交互模式参数，避免密码提示
         commandArgs.unshift('--non-interactive');
+        
+        // 添加信任服务器证书参数
+        commandArgs.unshift('--trust-server-cert');
       }
       
       // 执行SVN命令
-      const process = cp.spawn(this.svnPath, commandArgs, { cwd: this.workspaceRoot });
+      const process = cp.spawn(this.svnPath, commandArgs, { 
+        cwd: this.workspaceRoot,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
       
       let stdout = '';
       let stderr = '';
@@ -277,11 +296,31 @@ export class SvnProvider implements VcsProvider {
         stderr += data.toString();
       });
       
-      process.on('close', (code) => {
+      process.on('close', async (code) => {
         if (code === 0) {
           resolve(stdout);
         } else {
-          reject(stderr || `命令执行失败，退出码: ${code}`);
+          // 检查是否是认证错误
+          if (stderr.includes('Can\'t get username or password') || 
+              stderr.includes('Authentication failed') ||
+              stderr.includes('E170001')) {
+            
+            // 提示用户输入认证信息
+            const shouldSetupAuth = await vscode.window.showErrorMessage(
+              'SVN认证失败，是否设置用户名和密码？',
+              '设置认证信息',
+              '取消'
+            );
+            
+            if (shouldSetupAuth === '设置认证信息') {
+              await this.setupAuthenticationInternal();
+              reject('请重新尝试操作');
+            } else {
+              reject(stderr || `命令执行失败，退出码: ${code}`);
+            }
+          } else {
+            reject(stderr || `命令执行失败，退出码: ${code}`);
+          }
         }
       });
       
@@ -289,5 +328,51 @@ export class SvnProvider implements VcsProvider {
         reject(`命令执行错误: ${err.message}`);
       });
     });
+  }
+
+  /**
+   * 公共方法：设置SVN认证信息
+   */
+  public async setupAuthentication(): Promise<void> {
+    return this.setupAuthenticationInternal();
+  }
+
+  /**
+   * 内部方法：设置SVN认证信息
+   */
+  private async setupAuthenticationInternal(): Promise<void> {
+    try {
+      // 获取用户名
+      const username = await vscode.window.showInputBox({
+        prompt: '请输入SVN用户名',
+        value: this.configManager.get<string>('svn.username', ''),
+        ignoreFocusOut: true
+      });
+
+      if (!username) {
+        return;
+      }
+
+      // 获取密码
+      const password = await vscode.window.showInputBox({
+        prompt: '请输入SVN密码',
+        password: true,
+        ignoreFocusOut: true
+      });
+
+      if (!password) {
+        return;
+      }
+
+      // 保存用户名到配置
+      await this.configManager.update('svn.username', username);
+
+      // 保存密码到安全存储
+      await this.configManager.saveCredential(username, password);
+
+      vscode.window.showInformationMessage('SVN认证信息已保存');
+    } catch (error) {
+      vscode.window.showErrorMessage(`保存认证信息失败: ${error}`);
+    }
   }
 }

@@ -1,7 +1,13 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as keytar from 'keytar';
+// 动态导入 keytar 以避免在 Web 环境中的问题
+let keytar: any;
+try {
+  keytar = require('keytar');
+} catch (error) {
+  console.warn('keytar 模块加载失败，将使用内存存储:', error);
+}
 
 // 配置管理器类，负责处理全局和项目级配置
 export class ConfigManager {
@@ -82,17 +88,33 @@ export class ConfigManager {
 
   // 保存凭证
   public async saveCredential(account: string, password: string): Promise<void> {
-    await keytar.setPassword(this.SERVICE_NAME, account, password);
+    if (keytar) {
+      await keytar.setPassword(this.SERVICE_NAME, account, password);
+    } else {
+      // 如果 keytar 不可用，使用 VSCode 的 SecretStorage
+      await this.context.secrets.store(`${this.SERVICE_NAME}.${account}`, password);
+    }
   }
 
   // 获取凭证
   public async getCredential(account: string): Promise<string | null> {
-    return await keytar.getPassword(this.SERVICE_NAME, account);
+    if (keytar) {
+      return await keytar.getPassword(this.SERVICE_NAME, account);
+    } else {
+      // 如果 keytar 不可用，使用 VSCode 的 SecretStorage
+      return await this.context.secrets.get(`${this.SERVICE_NAME}.${account}`) || null;
+    }
   }
 
   // 删除凭证
   public async deleteCredential(account: string): Promise<boolean> {
-    return await keytar.deletePassword(this.SERVICE_NAME, account);
+    if (keytar) {
+      return await keytar.deletePassword(this.SERVICE_NAME, account);
+    } else {
+      // 如果 keytar 不可用，使用 VSCode 的 SecretStorage
+      await this.context.secrets.delete(`${this.SERVICE_NAME}.${account}`);
+      return true;
+    }
   }
 
   // 创建或更新项目级配置文件

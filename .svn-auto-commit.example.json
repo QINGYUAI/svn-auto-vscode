@@ -1,0 +1,88 @@
+{
+  "// 项目级配置示例": "将此文件重命名为 .svn-auto-commit.json 并放在项目根目录",
+  
+  "// 版本控制系统设置": "指定项目使用的版本控制系统",
+  "vcs": "git",
+  
+  "// 用户信息": "项目特定的用户信息",
+  "username": "项目开发者",
+  "email": "developer@project.com",
+  
+  "// 提交信息模板": "项目统一的提交信息格式",
+  "commitTemplate": "[{type}] {message}\n\n变更文件: {fileList}\n提交人: {username}\n时间: {datetime}",
+  
+  "// 提交类型": "允许的提交类型列表",
+  "commitTypes": [
+    "feat",     // 新功能
+    "fix",      // 修复bug
+    "docs",     // 文档更新
+    "style",    // 代码格式调整
+    "refactor", // 重构
+    "perf",     // 性能优化
+    "test",     // 测试相关
+    "chore",    // 构建过程或辅助工具的变动
+    "revert"    // 回滚
+  ],
+  
+  "// 默认提交类型": "默认选择的提交类型",
+  "defaultCommitType": "feat",
+  
+  "// 默认作者": "默认的提交作者信息",
+  "defaultAuthor": "项目团队",
+  
+  "// 自动提交设置": "项目的自动提交配置",
+  "autoCommitEnabled": false,
+  "autoCommitInterval": 60,
+  "autoCommitMessageTemplate": "自动提交: {fileList} ({datetime})",
+  
+  "// 忽略模式": "项目特定的忽略文件模式",
+  "ignorePatterns": [
+    "*.log",
+    "*.tmp",
+    "node_modules/",
+    "dist/",
+    "build/",
+    ".env",
+    ".env.local",
+    ".env.development",
+    ".env.production",
+    "coverage/",
+    ".nyc_output/",
+    ".DS_Store",
+    "Thumbs.db"
+  ],
+  
+  "// 钩子脚本": "提交前后执行的脚本",
+  "hooks": {
+    "preCommit": "npm run lint",
+    "postCommit": "npm run build"
+  },
+  
+  "// 验证规则": "提交信息验证规则",
+  "validation": {
+    "enabled": true,
+    "minLength": 10,
+    "maxLength": 72,
+    "requirePrefix": true,
+    "requireIssueNumber": false
+  },
+  
+  "// 团队配置": "团队协作相关配置",
+  "team": {
+    "members": [
+      "张三",
+      "李四", 
+      "王五"
+    ],
+    "reviewRequired": false,
+    "branchProtection": false
+  },
+  
+  "// 通知设置": "通知相关配置",
+  "notifications": {
+    "showSuccess": true,
+    "showError": true,
+    "showWarning": true,
+    "autoCommitNotification": false
+  }
+}

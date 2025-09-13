@@ -6,7 +6,7 @@ import { ConfigManager } from './configManager';
  * 状态栏管理器
  * 负责在VSCode状态栏显示版本控制系统状态和操作按钮
  */
-export class StatusBarManager {
+export class StatusBarManager implements vscode.Disposable {
   private vcsManager: VcsManager;
   private configManager: ConfigManager;
   private statusBarItem: vscode.StatusBarItem;
@@ -21,27 +21,27 @@ export class StatusBarManager {
     
     // 创建主状态栏项
     this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    this.statusBarItem.command = 'svn-vscode.showMenu';
+    this.statusBarItem.command = 'svn-auto-commit.showMenu';
     
     // 创建分支状态栏项
     this.branchStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
-    this.branchStatusBarItem.command = 'svn-vscode.showBranchInfo';
+    this.branchStatusBarItem.command = 'svn-auto-commit.showBranchInfo';
     
     // 创建更新状态栏项
     this.updateStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
-    this.updateStatusBarItem.command = 'svn-vscode.update';
+    this.updateStatusBarItem.command = 'svn-auto-commit.update';
     this.updateStatusBarItem.text = '$(sync)';
     this.updateStatusBarItem.tooltip = '更新/拉取';
     
     // 创建提交状态栏项
     this.commitStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
-    this.commitStatusBarItem.command = 'svn-vscode.commit';
+    this.commitStatusBarItem.command = 'svn-auto-commit.commit';
     this.commitStatusBarItem.text = '$(git-commit)';
     this.commitStatusBarItem.tooltip = '提交更改';
     
     // 创建历史记录状态栏项
     this.historyStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
-    this.historyStatusBarItem.command = 'svn-vscode.viewHistory';
+    this.historyStatusBarItem.command = 'svn-auto-commit.viewHistory';
     this.historyStatusBarItem.text = '$(history)';
     this.historyStatusBarItem.tooltip = '查看历史记录';
   }

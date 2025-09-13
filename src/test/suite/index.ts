@@ -1,9 +1,9 @@
 import * as path from 'path';
 import Mocha from 'mocha';
-import glob from 'glob';
+import { glob } from 'glob';
 import { TestFunction } from 'mocha';
 
-export function run(): Promise<void> {
+export async function run(): Promise<void> {
   // 创建 mocha 测试
   const mocha = new Mocha({
     ui: 'tdd',
@@ -12,15 +12,14 @@ export function run(): Promise<void> {
 
   const testsRoot = path.resolve(__dirname, '..');
 
-  return new Promise((c, e) => {
-    glob('**/**.test.js', { cwd: testsRoot }, (err: Error | null, files: string[]) => {
-      if (err) {
-        return e(err);
-      }
+  try {
+    // 使用新版本 glob 的 Promise API
+    const files = await glob('**/**.test.js', { cwd: testsRoot });
+    
+    // 添加文件到测试套件
+    files.forEach((f: string) => mocha.addFile(path.resolve(testsRoot, f)));
 
-      // 添加文件到测试套件
-      files.forEach((f: string) => mocha.addFile(path.resolve(testsRoot, f)));
-
+    return new Promise((c, e) => {
       try {
         // 运行测试
         mocha.run((failures: number) => {
@@ -35,5 +34,7 @@ export function run(): Promise<void> {
         e(err);
       }
     });
-  });
+  } catch (err) {
+    throw new Error(`查找测试文件失败: ${err}`);
+  }
 }

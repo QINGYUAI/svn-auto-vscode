@@ -9,6 +9,10 @@ import { CommitTemplateManager } from './commitTemplateManager';
 // 插件激活时调用
 export function activate(context: vscode.ExtensionContext) {
   console.log('SVN/Git 自动提交插件已激活');
+  
+  // 添加调试信息
+  console.log('Extension context:', context.extensionPath);
+  console.log('Workspace folders:', vscode.workspace.workspaceFolders?.length || 0);
 
   // 初始化配置管理器
   const configManager = new ConfigManager(context);
@@ -33,10 +37,21 @@ export function activate(context: vscode.ExtensionContext) {
     autoCommitManager,
     commitTemplateManager
   );
+  
+  console.log('开始注册命令...');
   commandManager.registerCommands();
+  console.log('命令注册完成');
+  
+  // 将命令管理器添加到订阅中，确保命令正确注册
+  context.subscriptions.push(commandManager);
+  console.log('命令管理器已添加到订阅，当前订阅数量:', context.subscriptions.length);
 
   // 初始化状态栏
   statusBarManager.initialize();
+  
+  // 将其他管理器也添加到订阅中
+  context.subscriptions.push(statusBarManager);
+  context.subscriptions.push(autoCommitManager);
 
   // 检测当前工作区的版本控制系统
   vcsManager.detectVcsType().then(() => {

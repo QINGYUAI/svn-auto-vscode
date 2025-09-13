@@ -1,53 +1,138 @@
 # SVN/Git 自动提交 VSCode 插件
 
-## 简介
+<p align="center">
+  <img src="https://img.shields.io/badge/VSCode-Extension-blue?style=flat-square&logo=visual-studio-code" alt="VSCode Extension">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
+  <img src="https://img.shields.io/badge/Version-0.1.0-orange?style=flat-square" alt="Version">
+</p>
 
-本插件为 VSCode 用户提供便捷的版本控制提交功能，支持 SVN 和 Git 两种主流版本控制系统，通过简单的配置和操作，实现代码的快速提交，提高开发效率。
+## 🚀 简介
 
-## 功能特点
+一个强大的 VSCode 插件，为开发者提供便捷的版本控制自动化解决方案。支持 SVN 和 Git 双版本控制系统，通过智能化的提交流程和丰富的配置选项，显著提升代码提交效率。
 
-- **多版本控制系统支持**：支持 SVN 和 Git 两种主流版本控制系统
-- **自动提交**：根据配置自动生成提交信息并提交代码
-- **快捷键支持**：通过自定义快捷键快速触发提交操作
-- **提交信息模板**：支持自定义提交信息模板，满足不同项目的规范要求
-- **批量操作**：支持选择性提交或批量提交多个文件
-- **提交历史**：查看和管理提交历史记录
-- **冲突解决**：提供简单的冲突解决辅助功能
+## ✨ 核心特性
 
-## 安装
+### 🔄 双版本控制系统支持
+- ✅ **智能检测**：自动识别项目使用的版本控制系统
+- ✅ **SVN 支持**：完整的 SVN 操作支持，包括更新、提交、冲突解决
+- ✅ **Git 支持**：全面的 Git 功能，支持拉取、推送、分支管理
 
-1. 通过 VSCode 插件市场搜索"SVN/Git 自动提交"插件
-2. 点击安装按钮完成安装
-3. 重启 VSCode 使插件生效
+### ⚡ 快速操作
+- 🎯 **一键提交**：`Ctrl+Alt+V` (Mac: `Cmd+Alt+V`) 快速提交
+- 📊 **状态栏集成**：实时显示版本控制状态和快捷操作
+- 🎛️ **命令面板**：完整的命令支持，操作更便捷
 
-## 使用方法
+### 🤖 自动化功能
+- 🔍 **文件监控**：实时监控工作区文件变化
+- ⏰ **延迟提交**：可配置延迟时间，避免频繁提交
+- 🚫 **智能忽略**：支持自定义忽略模式，排除不必要的文件
 
-### 基础配置
+### 📝 提交信息管理
+- 📋 **模板系统**：支持自定义提交信息模板
+- 🔤 **变量替换**：日期、时间、用户名、文件列表等动态变量
+- ✅ **信息验证**：可配置的提交信息格式验证
 
-- 插件会自动检测项目的版本控制系统类型（SVN/Git）
-- 用户可在项目设置中配置版本控制系统的用户名和密码
-- 支持全局配置和项目级配置，项目级配置优先级更高
+### 🛠️ 冲突解决
+- 🔍 **冲突检测**：自动检测版本冲突
+- 🎯 **解决选项**：提供多种冲突解决方案
+- 📖 **手动合并**：支持打开文件进行手动合并
 
-### 提交操作
+## 📦 安装方法
 
-- 通过 VSCode 命令面板执行提交命令
-- 通过自定义快捷键触发提交操作（默认：Ctrl+Alt+C / Cmd+Alt+C）
-- 支持右键菜单中的提交选项
-- 支持状态栏快速操作按钮
+### 方法一：VSCode 插件市场（推荐）
+1. 打开 VSCode
+2. 按 `Ctrl+Shift+X` 打开插件市场
+3. 搜索 "SVN/Git 自动提交"
+4. 点击安装
+
+### 方法二：VSIX 文件安装
+1. 下载 `svn-git-auto-commit-0.1.0.vsix` 文件
+2. 在 VSCode 中按 `Ctrl+Shift+P`
+3. 输入 `Extensions: Install from VSIX...`
+4. 选择下载的 VSIX 文件
+
+## 🎯 快速开始
+
+### 1. 基本使用
+```bash
+# 提交代码
+Ctrl+Alt+V (Mac: Cmd+Alt+V)
+
+# 或点击状态栏的提交图标
+# 或使用命令面板：SVN/Git 自动提交: 提交更改
+```
+
+### 2. 状态栏说明
+| 图标 | 功能 | 操作 |
+|------|------|------|
+| `$(source-control) SVN/Git` | 版本控制系统 | 点击显示菜单 |
+| `$(git-branch) 分支名` | 当前分支 | 点击显示分支信息 |
+| `$(sync)` | 更新/拉取 | 点击执行更新 |
+| `$(git-commit) [数字]` | 提交（变更文件数） | 点击执行提交 |
+| `$(history)` | 历史记录 | 点击查看历史 |
+
+### 3. 基础配置
+```json
+{
+  "svn-auto-commit.enabled": true,
+  "svn-auto-commit.showStatusBar": true,
+  "svn-auto-commit.confirmBeforeCommit": true,
+  "svn-auto-commit.commit.template": "[修复] {message} - {username} ({date})"
+}
+```
+
+## 📚 文档
+
+- 📖 [详细使用文档](./使用文档.md) - 完整的功能说明和配置指南
+- ⚡ [快速入门指南](./快速入门.md) - 5分钟快速上手
+- 🔧 [故障排除指南](./故障排除指南.md) - 常见问题解决方案
+- ⚙️ [配置示例](./配置示例.json) - 完整的配置参考
+
+## 🎨 功能演示
+
+### 提交流程
+1. 修改文件后，状态栏显示变更文件数量
+2. 按 `Ctrl+Alt+V` 或点击提交图标
+3. 选择要提交的文件
+4. 输入或确认提交信息
+5. 自动执行提交操作
 
 ### 自动提交
+```json
+{
+  "svn-auto-commit.autoCommit.enabled": true,
+  "svn-auto-commit.autoCommit.delay": 60,
+  "svn-auto-commit.autoCommit.messageTemplate": "自动提交: {fileList} ({datetime})"
+}
+```
 
-1. 用户启用自动提交功能并设置时间间隔
-2. 插件定期检查工作区变更
-3. 当检测到变更且满足自动提交条件时，生成提交信息
-4. 根据配置决定是否显示确认对话框
-5. 执行提交操作
-6. 显示提交结果通知
+## 🔧 系统要求
 
-## 配置选项
+- **VSCode**: 1.73.0 或更高版本
+- **Node.js**: 16.0 或更高版本
+- **Git**: 2.0 或更高版本（Git 项目）
+- **SVN**: 1.7 或更高版本（SVN 项目）
 
-插件支持丰富的配置选项，详细请参考插件设置页面或项目文档。
+## 🤝 贡献
 
-## 许可证
+欢迎提交 Issue 和 Pull Request！
 
-MIT
+1. Fork 本项目
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开 Pull Request
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 🙏 致谢
+
+感谢所有为这个项目做出贡献的开发者！
+
+---
+
+<p align="center">
+  <strong>如果这个插件对你有帮助，请给个 ⭐ Star 支持一下！</strong>
+</p>

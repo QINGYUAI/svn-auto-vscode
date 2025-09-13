@@ -10,7 +10,7 @@ import { CommitTemplateManager } from './commitTemplateManager';
  * 自动提交管理器
  * 负责监控文件变更并自动提交
  */
-export class AutoCommitManager {
+export class AutoCommitManager implements vscode.Disposable {
   private vcsManager: VcsManager;
   private configManager: ConfigManager;
   private statusBarManager: StatusBarManager;

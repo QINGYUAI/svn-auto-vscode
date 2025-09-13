@@ -35,6 +35,11 @@ export class VcsManager {
     return this.vcsProvider;
   }
 
+  // 获取当前提供者实例（用于访问特定方法）
+  public getCurrentProvider(): VcsProvider | null {
+    return this.vcsProvider;
+  }
+
   // 检查是否有冲突文件
   public async hasConflicts(): Promise<boolean> {
     if (!this.vcsProvider) {
