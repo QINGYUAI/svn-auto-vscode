@@ -1,25 +1,39 @@
 {
   "name": "svn-git-auto-commit",
   "displayName": "SVN/Git 自动提交",
-  "description": "VSCode插件，支持SVN和Git的自动提交功能",
-  "version": "0.1.0",
-  "publisher": "example-publisher",
+  "description": "VSCode插件，支持SVN和Git的自动提交功能，提供智能化的版本控制解决方案",
+  "version": "0.1.1",
+  "publisher": "QINGYUAI",
+  "author": {
+    "name": "QINGYUAI",
+    "email": "2321135061@qq.com"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/example/svn-git-auto-commit.git"
+    "url": "https://github.com/QINGYUAI/svn-auto-vscode.git"
   },
   "bugs": {
-    "url": "https://github.com/example/svn-git-auto-commit/issues"
+    "url": "https://github.com/QINGYUAI/svn-auto-vscode/issues"
   },
-  "homepage": "https://github.com/example/svn-git-auto-commit#readme",
+  "homepage": "https://github.com/QINGYUAI/svn-auto-vscode#readme",
   "license": "MIT",
   "engines": {
     "vscode": "^1.73.0"
   },
+  "keywords": [
+    "svn",
+    "git",
+    "version control",
+    "auto commit",
+    "源码管理",
+    "自动提交",
+    "版本控制"
+  ],
   "categories": [
     "SCM Providers",
     "Other"
   ],
+  "icon": "icon.png",
   "activationEvents": [
     "onStartupFinished",
     "workspaceContains:.git",

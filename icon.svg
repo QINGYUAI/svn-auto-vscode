@@ -1,0 +1,16 @@
+
+<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="128" height="128" rx="20" fill="#007ACC"/>
+  
+  <!-- 主要图标 - 代码符号 -->
+  <text x="64" y="45" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="white">&lt;/&gt;</text>
+  
+  <!-- SVN/Git标识 -->
+  <text x="32" y="75" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#FFD700">SVN</text>
+  <text x="96" y="75" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#FF6B35">Git</text>
+  
+  <!-- 自动提交箭头 -->
+  <path d="M40 90 L88 90 M83 85 L88 90 L83 95" stroke="white" stroke-width="3" fill="none"/>
+  <text x="64" y="110" text-anchor="middle" font-family="Arial" font-size="10" fill="white">Auto Commit</text>
+</svg>
