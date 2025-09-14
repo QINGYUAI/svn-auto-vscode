@@ -75,4 +75,3 @@ code --install-extension svn-git-auto-commit-fixed.vsix --force
 1. 在 SVN 项目中使用命令 `SVN/Git 自动提交: 设置SVN认证`
 2. 输入用户名和密码
 3. 验证认证信息是否正确保存和使用
-123
