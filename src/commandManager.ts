@@ -37,7 +37,7 @@ export class CommandManager implements vscode.Disposable {
    */
   public registerCommands(): void {
     console.log('CommandManager: 开始注册命令');
-    
+
     // 注册提交命令
     console.log('注册命令: svn-auto-commit.commit');
     this.disposables.push(
@@ -84,7 +84,7 @@ export class CommandManager implements vscode.Disposable {
     this.disposables.push(
       vscode.commands.registerCommand('svn-auto-commit.setupSvnAuth', () => this.setupSvnAuthentication())
     );
-    
+
     console.log('CommandManager: 所有命令注册完成，总计:', this.disposables.length, '个命令');
   }
 
@@ -103,7 +103,7 @@ export class CommandManager implements vscode.Disposable {
 
       // 检测提交上下文
       const context = this.detectCommitContext(uri);
-      
+
       // 根据上下文选择文件
       const selectedFiles = await this.selectFilesWithContext(changedFiles, context);
       if (!selectedFiles || selectedFiles.length === 0) {
@@ -137,8 +137,8 @@ export class CommandManager implements vscode.Disposable {
    * @param uri 文件URI
    * @returns 提交上下文信息
    */
-  private detectCommitContext(uri?: vscode.Uri): { 
-    source: 'editor' | 'explorer' | 'command'; 
+  private detectCommitContext(uri?: vscode.Uri): {
+    source: 'editor' | 'explorer' | 'command';
     currentFile?: string;
   } {
     let currentFile: string | undefined;
@@ -167,9 +167,14 @@ export class CommandManager implements vscode.Disposable {
    * @returns 选择的文件列表
    */
   private async selectFilesWithContext(
-    changedFiles: string[], 
+    changedFiles: string[],
     context: { source: 'editor' | 'explorer' | 'command'; currentFile?: string }
   ): Promise<string[] | undefined> {
+    // 如果只有一个文件变更，直接返回该文件，不需要选择界面
+    if (changedFiles.length === 1) {
+      return changedFiles;
+    }
+
     const contextAwareEnabled = this.configManager.get<boolean>('contextAware.enabled', true);
     const autoSelectCurrent = this.configManager.get<boolean>('contextAware.autoSelectCurrentFile', true);
     const skipSelection = this.configManager.get<boolean>('contextAware.skipFileSelection', false);
@@ -191,7 +196,7 @@ export class CommandManager implements vscode.Disposable {
       if (changedFiles.length === 1 && skipSelection) {
         return [context.currentFile!];
       }
-      
+
       // 否则显示文件选择器，但预选当前文件
       return this.showFileSelector(changedFiles, context.currentFile);
     }
@@ -431,7 +436,7 @@ export class CommandManager implements vscode.Disposable {
 
     // 显示多选框
     const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: preselectedFile 
+      placeHolder: preselectedFile
         ? `选择要提交的文件 (已预选: ${path.basename(preselectedFile)})`
         : '选择要提交的文件',
       canPickMany: true
