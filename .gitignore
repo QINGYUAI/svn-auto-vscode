@@ -4,3 +4,7 @@ node_modules
 *.vsix
 dist
 .DS_Store
+
+# 打包文件目录
+release/
+.specstory

@@ -16,14 +16,14 @@ coverage/**
 **/*.vsix
 # 包含图标文件
 !icon.png
-# 排除中文文档避免文件名冲突
-中文化说明.md
-使用文档.md
-快速入门.md
-故障排除指南.md
-菜单功能说明.md
-配置示例.json
-需求.md
+# 排除文档目录（文档已移动到docs目录）
+docs/**
+# 排除脚本目录
+scripts/**
+# 排除示例目录
+examples/**
+# 排除发布目录
+release/**
 # 排除测试和开发文件
 test-commands.js
 test-fix.md
