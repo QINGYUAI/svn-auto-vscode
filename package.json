@@ -2,7 +2,7 @@
   "name": "svn-git-auto-commit",
   "displayName": "SVN/Git 自动提交",
   "description": "VSCode插件，支持SVN和Git的自动提交功能，提供智能化的版本控制解决方案",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "QINGYUAI",
   "author": {
     "name": "QINGYUAI",
