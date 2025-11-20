@@ -5,6 +5,7 @@ import { StatusBarManager } from './statusBarManager';
 import { CommandManager } from './commandManager';
 import { AutoCommitManager } from './autoCommitManager';
 import { CommitTemplateManager } from './commitTemplateManager';
+import { AiCommitMessageGenerator } from './aiCommitMessageGenerator';
 
 // 插件激活时调用
 export function activate(context: vscode.ExtensionContext) {
@@ -16,6 +17,12 @@ export function activate(context: vscode.ExtensionContext) {
 
   // 初始化配置管理器
   const configManager = new ConfigManager(context);
+  
+  // 检测 Cursor 编辑器环境（在初始化时检测一次）
+  const aiGenerator = new AiCommitMessageGenerator(configManager);
+  const isCursor = aiGenerator.isCursorEditor();
+  console.log(`\n🎯 编辑器环境检测结果: ${isCursor ? '✅ 检测到 Cursor 编辑器' : '❌ 未检测到 Cursor 编辑器（使用 VSCode 或其他编辑器）'}`);
+  console.log(`📌 AI 功能将${isCursor ? '优先使用 Cursor AI' : '使用配置的 AI 服务'}\n`);
 
   // 初始化版本控制系统管理器
   const vcsManager = new VcsManager(configManager);

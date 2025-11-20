@@ -15,6 +15,48 @@ export class AiCommitMessageGenerator {
   }
 
   /**
+   * 检测当前编辑器是否是 Cursor（公开方法，可在外部调用）
+   * @returns 如果是 Cursor 返回 true，否则返回 false
+   */
+  public isCursorEditor(): boolean {
+    // 方法1: 检查编辑器名称
+    const appName = vscode.env.appName || '';
+    const isCursorByName = appName.toLowerCase().includes('cursor');
+    
+    // 方法2: 检查环境变量
+    const cursorEnv = process.env.CURSOR_VERSION || process.env.CURSOR_APP_NAME || '';
+    const isCursorByEnv = cursorEnv.toLowerCase().includes('cursor');
+    
+    // 方法3: 检查进程名称（如果可用）
+    let isCursorByProcess = false;
+    try {
+      const processTitle = process.title || '';
+      isCursorByProcess = processTitle.toLowerCase().includes('cursor');
+    } catch (e) {
+      // 忽略错误
+    }
+    
+    // 方法4: 检查是否可以通过 Cursor 的命令
+    // 这个会在调用时检查
+    
+    const isCursor = isCursorByName || isCursorByEnv || isCursorByProcess;
+    
+    // 输出详细的检测日志
+    console.log('=== Cursor 编辑器检测 ===');
+    console.log(`编辑器名称 (appName): "${appName}"`);
+    console.log(`环境变量 CURSOR_VERSION: "${process.env.CURSOR_VERSION || '未设置'}"`);
+    console.log(`环境变量 CURSOR_APP_NAME: "${process.env.CURSOR_APP_NAME || '未设置'}"`);
+    console.log(`进程标题 (process.title): "${process.title || '未设置'}"`);
+    console.log(`通过名称检测: ${isCursorByName}`);
+    console.log(`通过环境变量检测: ${isCursorByEnv}`);
+    console.log(`通过进程检测: ${isCursorByProcess}`);
+    console.log(`最终检测结果: ${isCursor ? '是 Cursor 编辑器' : '不是 Cursor 编辑器'}`);
+    console.log('========================');
+    
+    return isCursor;
+  }
+
+  /**
    * 生成AI提交信息
    * @param files 变更文件列表
    * @param diffs 文件diff信息映射（文件路径 -> diff内容）
@@ -29,6 +71,24 @@ export class AiCommitMessageGenerator {
       const aiEnabled = this.configManager.get<boolean>('ai.enabled', false);
       if (!aiEnabled) {
         return null;
+      }
+
+      // 检测是否是 Cursor 编辑器，如果是则优先使用 Cursor 的 AI 功能
+      const isCursor = this.isCursorEditor();
+      if (isCursor) {
+        console.log('✅ 检测到 Cursor 编辑器，尝试使用 Cursor AI 功能');
+        const prompt = this.buildPrompt(files, diffs);
+        console.log('📝 开始调用 Cursor AI，提示词长度:', prompt.length);
+        const cursorResult = await this.callCursorAI(prompt);
+        if (cursorResult) {
+          console.log('✅ Cursor AI 调用成功，返回结果长度:', cursorResult.length);
+          console.log('✅ 使用 Cursor AI 生成的提交信息:', cursorResult.substring(0, 100));
+          return cursorResult;
+        }
+        // 如果 Cursor AI 调用失败，继续使用配置的 AI
+        console.log('⚠️ Cursor AI 调用失败，回退到配置的 AI 服务');
+      } else {
+        console.log('ℹ️ 未检测到 Cursor 编辑器，使用配置的 AI 服务');
       }
 
       // 获取可用的AI提供商（优先使用配置的，如果没有密钥则自动检测）
@@ -88,6 +148,113 @@ export class AiCommitMessageGenerator {
       
       // 只在控制台显示详细错误，给用户显示简化版本
       vscode.window.showWarningMessage(userMessage);
+      return null;
+    }
+  }
+
+  /**
+   * 调用 Cursor 的 AI 功能
+   * @param prompt 提示词
+   * @returns 生成的提交信息，如果失败则返回 null
+   */
+  private async callCursorAI(prompt: string): Promise<string | null> {
+    try {
+      console.log('🔍 开始尝试调用 Cursor AI...');
+      
+      // Cursor 提供了 AI 命令，我们可以尝试使用 vscode.commands.executeCommand
+      // 尝试调用 Cursor 的 AI 聊天命令
+      // 注意：Cursor 的命令可能因版本而异，这里尝试几种可能的命令
+      
+      // 方法1: 尝试使用 Cursor 的命令 API
+      // Cursor 可能提供了类似 'cursor.chat' 或 'cursor.complete' 的命令
+      const cursorCommands = [
+        'cursor.chat',
+        'cursor.complete',
+        'cursor.generate',
+        'cursor.ai.chat',
+        'cursor.ai.complete',
+        'cursor.chat.complete',
+        'cursor.composer.complete'
+      ];
+
+      console.log(`📋 尝试 ${cursorCommands.length} 个 Cursor 命令...`);
+      for (const command of cursorCommands) {
+        try {
+          console.log(`  - 尝试命令: ${command}`);
+          // 尝试执行命令，传递提示词
+          const result = await vscode.commands.executeCommand<any>(command, {
+            prompt: prompt,
+            maxTokens: 100
+          });
+          
+          console.log(`  - 命令 ${command} 执行结果:`, result ? '有返回' : '无返回');
+          
+          if (result && typeof result === 'string') {
+            console.log(`✅ 成功使用 Cursor AI 命令: ${command}`);
+            return result.trim();
+          } else if (result && result.text) {
+            console.log(`✅ 成功使用 Cursor AI 命令: ${command} (从 result.text)`);
+            return result.text.trim();
+          } else if (result && result.content) {
+            console.log(`✅ 成功使用 Cursor AI 命令: ${command} (从 result.content)`);
+            return result.content.trim();
+          } else if (result) {
+            console.log(`  - 命令 ${command} 返回了结果，但格式不匹配:`, JSON.stringify(result).substring(0, 200));
+          }
+        } catch (cmdError: any) {
+          // 命令不存在或执行失败，继续尝试下一个
+          console.log(`  - 命令 ${command} 执行失败:`, cmdError?.message || cmdError);
+          continue;
+        }
+      }
+      
+      console.log('⚠️ 所有 Cursor 命令都尝试失败');
+
+      // 方法2: 尝试通过 HTTP 请求调用 Cursor 的本地 API（如果可用）
+      // Cursor 可能在本地提供 API 服务
+      const cursorApiUrls = [
+        process.env.CURSOR_API_URL,
+        'http://localhost:3000/api/chat',
+        'http://127.0.0.1:3000/api/chat',
+        'http://localhost:8080/api/chat',
+        'http://127.0.0.1:8080/api/chat'
+      ].filter((url): url is string => !!url); // 过滤掉空值，并确保类型为 string
+
+      console.log(`🌐 尝试 ${cursorApiUrls.length} 个 Cursor API 地址...`);
+      for (const apiUrl of cursorApiUrls) {
+        try {
+          console.log(`  - 尝试 API: ${apiUrl}`);
+          const result = await this.makeHttpRequest(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              prompt: prompt,
+              max_tokens: 100
+            })
+          }, (response: any) => {
+            return response.text || response.content || response.message || null;
+          });
+          
+          if (result) {
+            console.log(`✅ 成功使用 Cursor API: ${apiUrl}`);
+            return result;
+          } else {
+            console.log(`  - API ${apiUrl} 返回空结果`);
+          }
+        } catch (apiError: any) {
+          // API 调用失败，继续尝试下一个
+          console.log(`  - API ${apiUrl} 调用失败:`, apiError?.message || apiError);
+          continue;
+        }
+      }
+
+      // 如果所有方法都失败，返回 null，让代码回退到使用配置的 AI 服务
+      console.log('❌ Cursor AI 功能暂不可用，将回退到配置的 AI 服务');
+      return null;
+    } catch (error: any) {
+      console.error('调用 Cursor AI 失败:', error?.message || error);
       return null;
     }
   }

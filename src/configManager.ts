@@ -3,10 +3,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 // 动态导入 keytar 以避免在 Web 环境中的问题
 let keytar: any;
+let keytarAvailable = false;
 try {
   keytar = require('keytar');
-} catch (error) {
-  console.warn('keytar 模块加载失败，将使用内存存储:', error);
+  keytarAvailable = true;
+  console.log('✅ keytar 模块加载成功，将使用系统密钥存储');
+} catch (error: any) {
+  // keytar 是可选依赖，如果加载失败，将使用 VSCode 的 SecretStorage
+  // 这在某些环境下是正常的（如 Web 环境或 keytar 未正确安装）
+  keytarAvailable = false;
+  const errorMsg = error?.message || String(error);
+  // 只在调试模式下显示详细错误信息
+  if (errorMsg.includes('Cannot find module')) {
+    console.log('ℹ️ keytar 模块未找到，将使用 VSCode SecretStorage（这是正常的，功能不受影响）');
+  } else {
+    console.log(`ℹ️ keytar 模块加载失败，将使用 VSCode SecretStorage: ${errorMsg.substring(0, 100)}`);
+  }
 }
 
 // 配置管理器类，负责处理全局和项目级配置
@@ -88,33 +100,49 @@ export class ConfigManager {
 
   // 保存凭证
   public async saveCredential(account: string, password: string): Promise<void> {
-    if (keytar) {
-      await keytar.setPassword(this.SERVICE_NAME, account, password);
-    } else {
-      // 如果 keytar 不可用，使用 VSCode 的 SecretStorage
-      await this.context.secrets.store(`${this.SERVICE_NAME}.${account}`, password);
+    if (keytarAvailable && keytar) {
+      try {
+        await keytar.setPassword(this.SERVICE_NAME, account, password);
+        return;
+      } catch (error) {
+        // 如果 keytar 操作失败，回退到 VSCode SecretStorage
+        console.log('keytar 保存失败，回退到 VSCode SecretStorage');
+      }
     }
+    // 使用 VSCode 的 SecretStorage（更可靠，支持所有平台）
+    await this.context.secrets.store(`${this.SERVICE_NAME}.${account}`, password);
   }
 
   // 获取凭证
   public async getCredential(account: string): Promise<string | null> {
-    if (keytar) {
-      return await keytar.getPassword(this.SERVICE_NAME, account);
-    } else {
-      // 如果 keytar 不可用，使用 VSCode 的 SecretStorage
-      return await this.context.secrets.get(`${this.SERVICE_NAME}.${account}`) || null;
+    if (keytarAvailable && keytar) {
+      try {
+        const password = await keytar.getPassword(this.SERVICE_NAME, account);
+        if (password) {
+          return password;
+        }
+      } catch (error) {
+        // 如果 keytar 操作失败，回退到 VSCode SecretStorage
+        console.log('keytar 读取失败，回退到 VSCode SecretStorage');
+      }
     }
+    // 使用 VSCode 的 SecretStorage（更可靠，支持所有平台）
+    return await this.context.secrets.get(`${this.SERVICE_NAME}.${account}`) || null;
   }
 
   // 删除凭证
   public async deleteCredential(account: string): Promise<boolean> {
-    if (keytar) {
-      return await keytar.deletePassword(this.SERVICE_NAME, account);
-    } else {
-      // 如果 keytar 不可用，使用 VSCode 的 SecretStorage
-      await this.context.secrets.delete(`${this.SERVICE_NAME}.${account}`);
-      return true;
+    if (keytarAvailable && keytar) {
+      try {
+        return await keytar.deletePassword(this.SERVICE_NAME, account);
+      } catch (error) {
+        // 如果 keytar 操作失败，回退到 VSCode SecretStorage
+        console.log('keytar 删除失败，回退到 VSCode SecretStorage');
+      }
     }
+    // 使用 VSCode 的 SecretStorage（更可靠，支持所有平台）
+    await this.context.secrets.delete(`${this.SERVICE_NAME}.${account}`);
+    return true;
   }
 
   // 创建或更新项目级配置文件
