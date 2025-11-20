@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { ConfigManager } from './configManager';
+import { AiCommitMessageGenerator } from './aiCommitMessageGenerator';
 
 /**
  * 提交信息模板管理器
@@ -8,9 +9,11 @@ import { ConfigManager } from './configManager';
  */
 export class CommitTemplateManager {
   private configManager: ConfigManager;
+  private aiGenerator: AiCommitMessageGenerator;
 
   constructor(configManager: ConfigManager) {
     this.configManager = configManager;
+    this.aiGenerator = new AiCommitMessageGenerator(configManager);
   }
 
   /**
@@ -180,28 +183,123 @@ export class CommitTemplateManager {
    * 显示提交信息输入框
    * @param files 变更文件列表
    * @param context 提交上下文信息
+   * @param diffs 可选的文件diff信息映射
    * @returns 用户输入的提交信息，如果用户取消则返回undefined
    */
-  public async showCommitMessageInput(files: string[], context?: { currentFile?: string; changeType?: string }): Promise<string | undefined> {
+  public async showCommitMessageInput(
+    files: string[], 
+    context?: { currentFile?: string; changeType?: string },
+    diffs?: Map<string, string>
+  ): Promise<string | undefined> {
+    // 检查是否启用AI生成
+    const aiEnabled = this.configManager.get<boolean>('ai.enabled', false);
+    let defaultMessage = '';
+
+    if (aiEnabled && diffs && diffs.size > 0) {
+      // 尝试使用AI生成提交信息
+      const aiMessage = await this.generateAiMessage(files, diffs);
+      if (aiMessage) {
+        defaultMessage = aiMessage;
+      } else {
+        // AI生成失败，使用模板
+        defaultMessage = this.applyTemplate(files, context);
+      }
+    } else {
+      // 使用模板生成
+      defaultMessage = this.applyTemplate(files, context);
+    }
+
     // 检查是否启用自动生成提交信息
     const autoGenerate = this.configManager.get<boolean>('contextAware.autoGenerateMessage', true);
     
-    // 应用模板
-    const defaultMessage = this.applyTemplate(files, context);
-
     // 如果启用自动生成且有默认消息，直接返回
     if (autoGenerate && defaultMessage && defaultMessage.trim()) {
       return defaultMessage;
     }
 
-    // 显示输入框
+    // 显示输入框，提供更好的提示
+    const fileCount = files.length;
+    const fileHint = fileCount === 1 
+      ? `文件: ${files[0].split(/[/\\]/).pop()}`
+      : `${fileCount} 个文件`;
+    
     const message = await vscode.window.showInputBox({
-      prompt: '请输入提交信息',
+      prompt: `请输入提交信息 ${defaultMessage ? '(AI已生成，可编辑)' : ''}`,
+      placeHolder: defaultMessage || `例如: feat: 添加新功能`,
       value: defaultMessage,
-      validateInput: (value) => this.validateMessage(value)
+      validateInput: (value) => {
+        const validation = this.validateMessage(value);
+        if (validation) {
+          return validation;
+        }
+        // 提供友好的提示
+        if (value && value.trim().length > 0 && value.trim().length < 3) {
+          return '提交信息太短，建议至少3个字符';
+        }
+        return null;
+      },
+      ignoreFocusOut: false
     });
 
     return message;
+  }
+
+  /**
+   * 使用AI生成提交信息
+   * @param files 变更文件列表
+   * @param diffs 文件diff信息
+   * @returns 生成的提交信息
+   */
+  private async generateAiMessage(
+    files: string[],
+    diffs: Map<string, string>
+  ): Promise<string | null> {
+    try {
+      // 获取当前使用的AI服务
+      const currentProvider = this.configManager.get<string>('ai.provider', 'openai');
+      const providerNames: { [key: string]: string } = {
+        'openai': 'OpenAI',
+        'claude': 'Claude',
+        'gemini': 'Gemini',
+        'qwen': '通义千问',
+        'ernie': '文心一言',
+        'deepseek': 'DeepSeek',
+        'moonshot': 'Moonshot',
+        'custom': '自定义AI'
+      };
+      const providerLabel = providerNames[currentProvider] || currentProvider;
+      
+      // 使用进度提示
+      return await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `🤖 正在使用 ${providerLabel} 生成提交信息...`,
+          cancellable: false
+        },
+        async (progress) => {
+          progress.report({ increment: 0, message: '分析代码变更' });
+          
+          // 模拟进度更新
+          setTimeout(() => {
+            progress.report({ increment: 50, message: '调用AI服务' });
+          }, 500);
+          
+          const message = await this.aiGenerator.generateCommitMessage(files, diffs);
+          
+          if (message) {
+            progress.report({ increment: 100, message: '生成完成' });
+            // 不显示成功消息，让用户直接看到生成的提交信息
+          } else {
+            progress.report({ increment: 100, message: '生成失败，将使用模板' });
+          }
+          
+          return message;
+        }
+      );
+    } catch (error) {
+      console.error('AI生成提交信息失败:', error);
+      return null;
+    }
   }
 
   /**

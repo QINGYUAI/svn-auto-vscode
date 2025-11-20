@@ -251,6 +251,32 @@ export class SvnProvider implements VcsProvider {
     }
   }
 
+  // 获取文件diff信息
+  public async getFileDiff(filePath: string): Promise<string> {
+    try {
+      // 获取SVN diff
+      const diff = await this.executeCommand('diff', filePath);
+      return diff;
+    } catch (error) {
+      console.error(`获取文件 ${filePath} 的diff失败:`, error);
+      return '';
+    }
+  }
+
+  // 批量获取文件diff信息
+  public async getFilesDiff(filePaths: string[]): Promise<Map<string, string>> {
+    const diffs = new Map<string, string>();
+    
+    for (const filePath of filePaths) {
+      const diff = await this.getFileDiff(filePath);
+      if (diff) {
+        diffs.set(filePath, diff);
+      }
+    }
+    
+    return diffs;
+  }
+
   // 执行SVN命令
   private async executeCommand(...args: string[]): Promise<string> {
     return new Promise<string>(async (resolve, reject) => {

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 import { VcsProvider } from './vcsProvider';
 import { ConfigManager } from '../configManager';
 
@@ -197,6 +198,67 @@ export class GitProvider implements VcsProvider {
       console.error('获取Git冲突文件列表失败:', error);
       return [];
     }
+  }
+
+  // 获取文件diff信息
+  public async getFileDiff(filePath: string): Promise<string> {
+    try {
+      // 判断是绝对路径还是相对路径
+      let relativePath: string;
+      if (path.isAbsolute(filePath)) {
+        // 绝对路径，转换为相对路径
+        relativePath = path.relative(this.workspaceRoot, filePath).replace(/\\/g, '/');
+      } else {
+        // 已经是相对路径
+        relativePath = filePath.replace(/\\/g, '/');
+      }
+      
+      // 尝试获取已暂存的diff
+      let diff = '';
+      try {
+        diff = await this.executeCommand('diff', '--staged', '--', relativePath);
+      } catch (error) {
+        // 如果没有暂存的变更，获取工作区的diff
+        try {
+          diff = await this.executeCommand('diff', '--', relativePath);
+        } catch (error2) {
+          // 如果文件是新增的，尝试获取文件内容
+          try {
+            const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(this.workspaceRoot, filePath);
+            if (fs.existsSync(absolutePath)) {
+              const content = fs.readFileSync(absolutePath, 'utf8');
+              // 限制内容长度，避免超出token限制
+              const maxContentLength = 2000;
+              const truncatedContent = content.length > maxContentLength 
+                ? content.substring(0, maxContentLength) + '\n... (内容已截断)'
+                : content;
+              diff = `新文件: ${relativePath}\n${truncatedContent}`;
+            }
+          } catch (error3) {
+            // 忽略错误，返回空diff
+          }
+        }
+      }
+      
+      return diff;
+    } catch (error) {
+      console.error(`获取文件 ${filePath} 的diff失败:`, error);
+      return '';
+    }
+  }
+
+  // 批量获取文件diff信息
+  public async getFilesDiff(filePaths: string[]): Promise<Map<string, string>> {
+    const diffs = new Map<string, string>();
+    
+    for (const filePath of filePaths) {
+      const diff = await this.getFileDiff(filePath);
+      if (diff) {
+        diffs.set(filePath, diff);
+      }
+    }
+    
+    return diffs;
   }
 
   // 执行Git命令

@@ -28,4 +28,10 @@ export interface VcsProvider {
   
   // 获取冲突文件列表
   getConflictFiles(): Promise<string[]>;
+  
+  // 获取文件diff信息
+  getFileDiff(filePath: string): Promise<string>;
+  
+  // 批量获取文件diff信息
+  getFilesDiff(filePaths: string[]): Promise<Map<string, string>>;
 }

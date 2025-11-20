@@ -2,7 +2,7 @@
   "name": "svn-git-auto-commit",
   "displayName": "SVN/Git 自动提交",
   "description": "VSCode插件，支持SVN和Git的自动提交功能，提供智能化的版本控制解决方案",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "publisher": "QINGYUAI",
   "author": {
     "name": "QINGYUAI",
@@ -104,6 +104,18 @@
         "title": "设置SVN认证",
         "category": "SVN/Git 自动提交",
         "icon": "$(key)"
+      },
+      {
+        "command": "svn-auto-commit.setupAiApiKey",
+        "title": "设置AI API密钥",
+        "category": "SVN/Git 自动提交",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "svn-auto-commit.generateCommitMessage",
+        "title": "AI生成提交信息",
+        "category": "SVN/Git 自动提交",
+        "icon": "$(sparkle)"
       }
     ],
     "keybindings": [
@@ -256,6 +268,13 @@
           "when": "true"
         }
       ],
+      "scm/inputBox": [
+        {
+          "command": "svn-auto-commit.generateCommitMessage",
+          "group": "ai@1",
+          "when": "scmProvider != ''"
+        }
+      ],
       "view/title": [
         {
           "command": "svn-auto-commit.showMenu",
@@ -387,6 +406,43 @@
           "default": false,
           "description": "当只有当前文件变更时是否跳过文件选择"
         },
+        "svn-auto-commit.autoCommit.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否启用自动提交功能"
+        },
+        "svn-auto-commit.autoCommit.delay": {
+          "type": "number",
+          "default": 30,
+          "description": "文件变更后的延迟时间（秒），超过此时间后自动提交"
+        },
+        "svn-auto-commit.autoCommit.showNotification": {
+          "type": "boolean",
+          "default": true,
+          "description": "自动提交后是否显示通知"
+        },
+        "svn-auto-commit.autoCommit.messageTemplate": {
+          "type": "string",
+          "default": "",
+          "description": "自动提交信息模板，支持变量: {files}, {date}, {datetime}, {count}"
+        },
+        "svn-auto-commit.autoCommit.ignorePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/.git/**",
+            "**/node_modules/**",
+            "**/.svn/**",
+            "**/*.log",
+            "**/dist/**",
+            "**/build/**",
+            "**/.env",
+            "**/.DS_Store"
+          ],
+          "description": "自动提交忽略的文件模式（glob模式）"
+        },
         "svn-auto-commit.commit.template": {
           "type": "string",
           "default": "更新 {fileList}",
@@ -424,6 +480,158 @@
           },
           "default": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "chore", "revert"],
           "description": "允许的提交信息前缀"
+        },
+        "svn-auto-commit.ai.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否启用AI自动生成提交信息"
+        },
+        "svn-auto-commit.ai.autoSelect": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否自动选择有密钥的AI服务（如果配置的AI没有密钥，会自动使用其他有密钥的AI）"
+        },
+        "svn-auto-commit.ai.provider": {
+          "type": "string",
+          "enum": ["openai", "claude", "gemini", "qwen", "tongyi", "ernie", "wenxin", "deepseek", "moonshot", "custom"],
+          "default": "openai",
+          "description": "AI服务提供商 (openai/claude/gemini/qwen/ernie/deepseek/moonshot/custom)"
+        },
+        "svn-auto-commit.ai.openai.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API密钥（建议使用安全存储）"
+        },
+        "svn-auto-commit.ai.openai.model": {
+          "type": "string",
+          "default": "gpt-3.5-turbo",
+          "description": "OpenAI模型名称"
+        },
+        "svn-auto-commit.ai.openai.apiUrl": {
+          "type": "string",
+          "default": "https://api.openai.com/v1/chat/completions",
+          "description": "OpenAI API地址"
+        },
+        "svn-auto-commit.ai.claude.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Claude API密钥（建议使用安全存储）"
+        },
+        "svn-auto-commit.ai.claude.model": {
+          "type": "string",
+          "default": "claude-3-sonnet-20240229",
+          "description": "Claude模型名称"
+        },
+        "svn-auto-commit.ai.claude.apiUrl": {
+          "type": "string",
+          "default": "https://api.anthropic.com/v1/messages",
+          "description": "Claude API地址"
+        },
+        "svn-auto-commit.ai.gemini.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Gemini API密钥（建议使用安全存储）"
+        },
+        "svn-auto-commit.ai.gemini.model": {
+          "type": "string",
+          "default": "gemini-pro",
+          "description": "Gemini模型名称"
+        },
+        "svn-auto-commit.ai.gemini.apiUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Gemini API地址（留空使用默认地址）"
+        },
+        "svn-auto-commit.ai.qwen.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "通义千问API密钥（建议使用安全存储）"
+        },
+        "svn-auto-commit.ai.qwen.model": {
+          "type": "string",
+          "default": "qwen-turbo",
+          "description": "通义千问模型名称"
+        },
+        "svn-auto-commit.ai.qwen.apiUrl": {
+          "type": "string",
+          "default": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+          "description": "通义千问API地址"
+        },
+        "svn-auto-commit.ai.ernie.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "文心一言API密钥/access_token（建议使用安全存储）"
+        },
+        "svn-auto-commit.ai.ernie.model": {
+          "type": "string",
+          "default": "ernie-bot",
+          "description": "文心一言模型名称"
+        },
+        "svn-auto-commit.ai.ernie.apiUrl": {
+          "type": "string",
+          "default": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions",
+          "description": "文心一言API地址"
+        },
+        "svn-auto-commit.ai.deepseek.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "DeepSeek API密钥（建议使用安全存储）"
+        },
+        "svn-auto-commit.ai.deepseek.model": {
+          "type": "string",
+          "default": "deepseek-chat",
+          "description": "DeepSeek模型名称"
+        },
+        "svn-auto-commit.ai.deepseek.apiUrl": {
+          "type": "string",
+          "default": "https://api.deepseek.com/v1/chat/completions",
+          "description": "DeepSeek API地址"
+        },
+        "svn-auto-commit.ai.moonshot.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Moonshot API密钥（建议使用安全存储）"
+        },
+        "svn-auto-commit.ai.moonshot.model": {
+          "type": "string",
+          "default": "moonshot-v1-8k",
+          "description": "Moonshot模型名称"
+        },
+        "svn-auto-commit.ai.moonshot.apiUrl": {
+          "type": "string",
+          "default": "https://api.moonshot.cn/v1/chat/completions",
+          "description": "Moonshot API地址"
+        },
+        "svn-auto-commit.ai.custom.apiUrl": {
+          "type": "string",
+          "default": "",
+          "description": "自定义AI API地址"
+        },
+        "svn-auto-commit.ai.custom.method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT"],
+          "default": "POST",
+          "description": "自定义API请求方法"
+        },
+        "svn-auto-commit.ai.custom.requestBody": {
+          "type": "string",
+          "default": "",
+          "description": "自定义API请求体模板（JSON格式，使用{prompt}占位符）"
+        },
+        "svn-auto-commit.ai.custom.authHeader": {
+          "type": "string",
+          "default": "Authorization",
+          "description": "自定义API认证头字段名"
+        },
+        "svn-auto-commit.ai.custom.authPrefix": {
+          "type": "string",
+          "default": "Bearer ",
+          "description": "自定义API认证前缀（如Bearer、ApiKey等）"
+        },
+        "svn-auto-commit.ai.custom.responsePath": {
+          "type": "string",
+          "default": "",
+          "description": "自定义API响应路径（点号分隔，如choices.0.message.content）"
         }
       }
     }

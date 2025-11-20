@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import { VcsManager } from './vcsManager';
 import { ConfigManager } from './configManager';
 import { StatusBarManager } from './statusBarManager';
@@ -85,6 +86,16 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand('svn-auto-commit.setupSvnAuth', () => this.setupSvnAuthentication())
     );
 
+    // 注册设置AI API密钥命令
+    this.disposables.push(
+      vscode.commands.registerCommand('svn-auto-commit.setupAiApiKey', () => this.setupAiApiKey())
+    );
+
+    // 注册AI生成提交信息命令（用于SCM输入框）
+    this.disposables.push(
+      vscode.commands.registerCommand('svn-auto-commit.generateCommitMessage', () => this.generateCommitMessageForScm())
+    );
+
     console.log('CommandManager: 所有命令注册完成，总计:', this.disposables.length, '个命令');
   }
 
@@ -110,12 +121,23 @@ export class CommandManager implements vscode.Disposable {
         return;
       }
 
+      // 获取文件diff信息（用于AI生成）
+      // 将相对路径转换为绝对路径
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+      const absoluteFiles = selectedFiles.map(file => {
+        if (path.isAbsolute(file)) {
+          return file;
+        }
+        return path.join(workspaceRoot, file);
+      });
+      const diffs = await this.vcsManager.getFilesDiff(absoluteFiles);
+
       // 使用提交信息模板管理器获取提交信息
       const commitContext = {
         currentFile: context.currentFile,
         changeType: undefined // 将由模板管理器自动检测
       };
-      const message = await this.commitTemplateManager.showCommitMessageInput(selectedFiles, commitContext);
+      const message = await this.commitTemplateManager.showCommitMessageInput(selectedFiles, commitContext, diffs);
 
       if (!message) {
         return;
@@ -447,6 +469,514 @@ export class CommandManager implements vscode.Disposable {
     }
 
     return selected.map(item => item.description);
+  }
+
+  /**
+   * 为SCM输入框生成AI提交信息
+   */
+  private async generateCommitMessageForScm(): Promise<void> {
+    try {
+      // 检查AI功能是否启用
+      const aiEnabled = this.configManager.get<boolean>('ai.enabled', false);
+      if (!aiEnabled) {
+        const enable = await vscode.window.showWarningMessage(
+          'AI功能未启用，是否现在启用？',
+          { modal: true },
+          '启用AI功能',
+          '取消'
+        );
+        if (enable === '启用AI功能') {
+          await this.configManager.update('ai.enabled', true);
+        } else {
+          return;
+        }
+      }
+
+      // 获取变更文件列表
+      const changedFiles = await this.vcsManager.getChangedFiles();
+      if (changedFiles.length === 0) {
+        vscode.window.showInformationMessage('没有需要提交的更改');
+        return;
+      }
+
+      // 获取文件diff信息
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+      const absoluteFiles = changedFiles.map(file => {
+        if (path.isAbsolute(file)) {
+          return file;
+        }
+        return path.join(workspaceRoot, file);
+      });
+      const diffs = await this.vcsManager.getFilesDiff(absoluteFiles);
+
+      if (diffs.size === 0) {
+        vscode.window.showWarningMessage('无法获取文件变更内容，请确保文件已保存');
+        return;
+      }
+
+      // 使用AI生成提交信息
+      const commitTemplateManager = this.commitTemplateManager as any;
+      if (!commitTemplateManager.aiGenerator) {
+        vscode.window.showErrorMessage('AI生成器未初始化，请重启VSCode后重试');
+        return;
+      }
+
+      // 获取当前使用的AI服务
+      const currentProvider = this.configManager.get<string>('ai.provider', 'openai');
+      const providerNames: { [key: string]: string } = {
+        'openai': 'OpenAI',
+        'claude': 'Claude',
+        'gemini': 'Gemini',
+        'qwen': '通义千问',
+        'ernie': '文心一言',
+        'deepseek': 'DeepSeek',
+        'moonshot': 'Moonshot',
+        'custom': '自定义AI'
+      };
+      const providerLabel = providerNames[currentProvider] || currentProvider;
+
+      // 显示进度并生成
+      const generatedMessage = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `🤖 正在使用 ${providerLabel} 生成提交信息...`,
+          cancellable: false
+        },
+        async (progress) => {
+          progress.report({ increment: 0, message: '分析代码变更' });
+          
+          setTimeout(() => {
+            progress.report({ increment: 50, message: '调用AI服务' });
+          }, 500);
+
+          const message = await commitTemplateManager.aiGenerator.generateCommitMessage(
+            changedFiles,
+            diffs
+          );
+
+          progress.report({ increment: 100, message: message ? '生成完成' : '生成失败' });
+          return message;
+        }
+      );
+
+      if (generatedMessage) {
+        // 将生成的提交信息复制到剪贴板
+        await vscode.env.clipboard.writeText(generatedMessage);
+        
+        // 尝试设置SCM输入框的值
+        // 注意：VSCode的SCM API需要通过SCM提供者访问，这里我们使用命令和剪贴板的方式
+        
+        // 先聚焦到SCM视图
+        await vscode.commands.executeCommand('workbench.view.scm');
+        
+        // 显示成功消息并提供操作选项
+        const action = await vscode.window.showInformationMessage(
+          `✅ AI已生成提交信息: ${generatedMessage.substring(0, 50)}${generatedMessage.length > 50 ? '...' : ''}`,
+          '自动填入输入框',
+          '查看完整信息',
+          '使用此信息提交'
+        );
+        
+        if (action === '自动填入输入框') {
+          // 尝试聚焦到输入框并粘贴
+          setTimeout(async () => {
+            try {
+              // 聚焦到SCM输入框
+              await vscode.commands.executeCommand('scm.inputBox.focus');
+              
+              // 等待输入框聚焦后，尝试设置值
+              // 由于VSCode API限制，我们使用剪贴板+粘贴的方式
+              setTimeout(async () => {
+                // 选中所有文本（如果有）
+                await vscode.commands.executeCommand('editor.action.selectAll');
+                // 粘贴剪贴板内容
+                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                
+                vscode.window.showInformationMessage('✅ 已填入提交信息输入框，您可以编辑后提交');
+              }, 300);
+            } catch (error) {
+              // 如果自动填入失败，提示用户手动粘贴
+              vscode.window.showInformationMessage(
+                '已复制到剪贴板，请在提交信息输入框中按 Ctrl+V (Mac: Cmd+V) 粘贴',
+                '知道了'
+              );
+            }
+          }, 200);
+        } else if (action === '查看完整信息') {
+          // 显示完整信息对话框
+          const fullMessage = await vscode.window.showInputBox({
+            prompt: 'AI生成的完整提交信息',
+            value: generatedMessage,
+            placeHolder: '可编辑后确认',
+            ignoreFocusOut: false
+          });
+          
+          if (fullMessage) {
+            // 更新剪贴板
+            await vscode.env.clipboard.writeText(fullMessage);
+            vscode.window.showInformationMessage('已更新剪贴板，请在输入框中粘贴');
+          }
+        } else if (action === '使用此信息提交') {
+          // 直接使用生成的提交信息进行提交
+          const confirm = await vscode.window.showQuickPick([
+            { label: '$(git-commit) 确认提交', value: 'yes' },
+            { label: '$(close) 取消', value: 'no' }
+          ], {
+            placeHolder: `将使用提交信息: ${generatedMessage}`
+          });
+          
+          if (confirm?.value === 'yes') {
+            const success = await this.vcsManager.commit(generatedMessage, changedFiles);
+            if (success) {
+              await this.statusBarManager.update();
+              vscode.window.showInformationMessage('✅ 提交成功');
+            }
+          }
+        }
+      } else {
+        vscode.window.showWarningMessage('AI生成提交信息失败，请检查AI配置或使用模板生成');
+      }
+    } catch (error: any) {
+      vscode.window.showErrorMessage(`AI生成提交信息失败: ${error?.message || error}`);
+    }
+  }
+
+  /**
+   * 设置AI API密钥
+   */
+  private async setupAiApiKey(): Promise<void> {
+    try {
+      // 获取所有AI提供商及其密钥状态
+      const commitTemplateManager = this.commitTemplateManager as any;
+      if (!commitTemplateManager.aiGenerator) {
+        vscode.window.showErrorMessage('AI生成器未初始化，请重启VSCode后重试');
+        return;
+      }
+
+      const availableProviders = await commitTemplateManager.aiGenerator.getAvailableProviders();
+      const currentProvider = this.configManager.get<string>('ai.provider', 'openai');
+      const aiEnabled = this.configManager.get<boolean>('ai.enabled', false);
+      
+      // 构建选项列表，显示哪些已配置密钥
+      interface ProviderOption extends vscode.QuickPickItem {
+        providerName: string;
+        hasKey: boolean;
+      }
+      
+      // 按状态分组：已配置的在前，未配置的在后
+      const configuredProviders = availableProviders.filter((p: { hasKey: boolean }) => p.hasKey);
+      const unconfiguredProviders = availableProviders.filter((p: { hasKey: boolean }) => !p.hasKey);
+      
+      const providerOptions: ProviderOption[] = [
+        // 已配置的AI服务
+        ...configuredProviders.map((provider: { name: string; label: string; hasKey: boolean }) => ({
+          label: `$(check) ${provider.label}`,
+          providerName: provider.name,
+          hasKey: true,
+          description: provider.name === currentProvider ? '✓ 当前使用' : '已配置',
+          detail: provider.name === currentProvider 
+            ? '当前正在使用的AI服务，点击可重新设置或删除'
+            : '已配置密钥，点击可重新设置或删除'
+        })),
+        // 分隔线
+        ...(configuredProviders.length > 0 && unconfiguredProviders.length > 0 ? [{
+          label: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+          providerName: '',
+          hasKey: false,
+          description: '',
+          detail: ''
+        }] : []),
+        // 未配置的AI服务
+        ...unconfiguredProviders.map((provider: { name: string; label: string; hasKey: boolean }) => ({
+          label: `$(circle-outline) ${provider.label}`,
+          providerName: provider.name,
+          hasKey: false,
+          description: '未配置',
+          detail: '点击进行配置'
+        }))
+      ];
+      
+      // 添加帮助信息
+      const helpInfo: ProviderOption = {
+        label: '$(info) 查看帮助文档',
+        providerName: '__help__',
+        hasKey: false,
+        description: '了解如何获取API密钥',
+        detail: '打开AI功能使用指南'
+      };
+      providerOptions.push(helpInfo);
+      
+      const selectedProvider = await vscode.window.showQuickPick(providerOptions, {
+        placeHolder: aiEnabled 
+          ? `选择AI服务提供商（当前: ${availableProviders.find((p: { name: string }) => p.name === currentProvider)?.label || currentProvider}）`
+          : '选择AI服务提供商（提示：需要先启用AI功能）',
+        ignoreFocusOut: false
+      });
+      
+      if (!selectedProvider) {
+        return;
+      }
+
+      // 处理帮助信息
+      if (selectedProvider.providerName === '__help__') {
+        // 尝试打开文档
+        try {
+          const extension = vscode.extensions.getExtension('QINGYUAI.svn-git-auto-commit');
+          if (extension) {
+            const docPath = vscode.Uri.joinPath(
+              vscode.Uri.file(extension.extensionPath),
+              'docs',
+              'AI提交信息生成指南.md'
+            );
+            vscode.commands.executeCommand('markdown.showPreview', docPath);
+          } else {
+            vscode.window.showInformationMessage('请查看文档: docs/AI提交信息生成指南.md');
+          }
+        } catch (error) {
+          vscode.window.showInformationMessage('请查看文档: docs/AI提交信息生成指南.md');
+        }
+        return;
+      }
+
+      const providerInfo = availableProviders.find((p: { name: string; label: string; hasKey: boolean }) => p.name === selectedProvider.providerName);
+      if (!providerInfo) {
+        return;
+      }
+
+      // 如果已配置密钥，询问是否重新设置
+      if (providerInfo.hasKey) {
+        const action = await vscode.window.showQuickPick([
+          { 
+            label: '$(edit) 重新设置密钥', 
+            value: 'update',
+            description: '更新API密钥',
+            detail: '将替换当前保存的密钥'
+          },
+          { 
+            label: '$(trash) 删除密钥', 
+            value: 'delete',
+            description: '删除已保存的密钥',
+            detail: '删除后需要重新配置才能使用'
+          },
+          { 
+            label: '$(settings-gear) 查看配置', 
+            value: 'config',
+            description: '查看当前配置',
+            detail: '查看模型、API地址等配置项'
+          },
+          { 
+            label: '$(close) 取消', 
+            value: 'cancel',
+            description: '取消操作'
+          }
+        ], {
+          placeHolder: `${providerInfo.label} - 选择操作`,
+          ignoreFocusOut: false
+        });
+
+        if (!action || action.value === 'cancel') {
+          return;
+        }
+
+        if (action.value === 'config') {
+          // 显示配置信息
+          await this.showAiConfig(selectedProvider.providerName, providerInfo.label);
+          return;
+        }
+
+        if (action.value === 'delete') {
+          // 确认删除
+          const confirm = await vscode.window.showWarningMessage(
+            `确定要删除 ${providerInfo.label} 的API密钥吗？`,
+            { modal: true },
+            '确定删除',
+            '取消'
+          );
+          
+          if (confirm === '确定删除') {
+            await this.configManager.deleteCredential(`ai-${selectedProvider.providerName}-apikey`);
+            
+            // 如果删除的是当前使用的AI，提示用户
+            if (selectedProvider.providerName === currentProvider) {
+              vscode.window.showWarningMessage(
+                `${providerInfo.label} API密钥已删除。请重新配置或切换到其他AI服务。`,
+                '重新配置',
+                '查看其他AI'
+              ).then(choice => {
+                if (choice === '重新配置') {
+                  this.setupAiApiKey();
+                } else if (choice === '查看其他AI') {
+                  this.setupAiApiKey();
+                }
+              });
+            } else {
+              vscode.window.showInformationMessage(`${providerInfo.label} API密钥已删除`);
+            }
+          }
+          return;
+        }
+      }
+      
+      // 显示配置提示信息
+      const configHint = this.getProviderConfigHint(selectedProvider.providerName);
+      if (configHint) {
+        const showHint = await vscode.window.showInformationMessage(
+          configHint.message,
+          { modal: false },
+          '继续配置',
+          '查看文档'
+        );
+        
+        if (showHint === '查看文档') {
+          try {
+            const extension = vscode.extensions.getExtension('QINGYUAI.svn-git-auto-commit');
+            if (extension) {
+              const docPath = vscode.Uri.joinPath(
+                vscode.Uri.file(extension.extensionPath),
+                'docs',
+                'AI提交信息生成指南.md'
+              );
+              vscode.commands.executeCommand('markdown.showPreview', docPath);
+            } else {
+              vscode.window.showInformationMessage('请查看文档: docs/AI提交信息生成指南.md');
+            }
+          } catch (error) {
+            vscode.window.showInformationMessage('请查看文档: docs/AI提交信息生成指南.md');
+          }
+          return;
+        }
+      }
+      
+      // 获取API密钥
+      const apiKey = await vscode.window.showInputBox({
+        prompt: `请输入 ${providerInfo.label} 的API密钥`,
+        placeHolder: configHint?.placeholder || 'sk-... 或您的API密钥',
+        password: true,
+        ignoreFocusOut: true,
+        validateInput: (value) => {
+          if (!value || value.trim().length === 0) {
+            return 'API密钥不能为空';
+          }
+          if (value.trim().length < 10) {
+            return 'API密钥长度似乎不正确，请检查';
+          }
+          return null;
+        }
+      });
+      
+      if (!apiKey) {
+        return;
+      }
+      
+      // 显示保存进度
+      const progressOptions: vscode.ProgressOptions = {
+        location: vscode.ProgressLocation.Notification,
+        title: `正在保存 ${providerInfo.label} API密钥...`,
+        cancellable: false
+      };
+      
+      await vscode.window.withProgress(progressOptions, async () => {
+        // 保存API密钥到安全存储
+        await commitTemplateManager.aiGenerator.saveApiKey(selectedProvider.providerName, apiKey);
+        
+        // 自动切换到当前配置的AI
+        await this.configManager.update('ai.provider', selectedProvider.providerName);
+      });
+      
+      // 显示成功消息并提供后续操作
+      const result = await vscode.window.showInformationMessage(
+        `✅ ${providerInfo.label} API密钥已保存并已切换为该服务`,
+        '启用AI功能',
+        '查看配置',
+        '完成'
+      );
+      
+      if (result === '启用AI功能') {
+        await this.configManager.update('ai.enabled', true);
+        vscode.window.showInformationMessage('AI功能已启用，现在可以使用AI生成提交信息了');
+      } else if (result === '查看配置') {
+        await this.showAiConfig(selectedProvider.providerName, providerInfo.label);
+      }
+    } catch (error: any) {
+      vscode.window.showErrorMessage(`设置AI API密钥失败: ${error?.message || error}`);
+    }
+  }
+
+  /**
+   * 显示AI配置信息
+   */
+  private async showAiConfig(providerName: string, providerLabel: string): Promise<void> {
+    const configPrefix = `svn-auto-commit.ai.${providerName}`;
+    const model = this.configManager.get<string>(`${configPrefix}.model`, '');
+    const apiUrl = this.configManager.get<string>(`${configPrefix}.apiUrl`, '');
+    
+    const configItems: vscode.QuickPickItem[] = [
+      {
+        label: `$(gear) 模型名称`,
+        description: model || '使用默认值',
+        detail: `当前配置: ${model || '未设置'}`
+      },
+      {
+        label: `$(globe) API地址`,
+        description: apiUrl || '使用默认值',
+        detail: `当前配置: ${apiUrl || '未设置'}`
+      },
+      {
+        label: `$(settings-gear) 打开设置`,
+        description: '在设置中修改配置',
+        detail: '打开VSCode设置页面'
+      }
+    ];
+    
+    const selected = await vscode.window.showQuickPick(configItems, {
+      placeHolder: `${providerLabel} - 配置信息`
+    });
+    
+    if (selected?.label.includes('打开设置')) {
+      vscode.commands.executeCommand('workbench.action.openSettings', `@ext:QINGYUAI.svn-git-auto-commit ${configPrefix}`);
+    }
+  }
+
+  /**
+   * 获取AI提供商的配置提示信息
+   */
+  private getProviderConfigHint(providerName: string): { message: string; placeholder: string } | null {
+    const hints: { [key: string]: { message: string; placeholder: string } } = {
+      'openai': {
+        message: 'OpenAI API密钥通常以 "sk-" 开头。您可以在 https://platform.openai.com/api-keys 获取',
+        placeholder: 'sk-...'
+      },
+      'claude': {
+        message: 'Claude API密钥通常以 "sk-ant-" 开头。您可以在 https://console.anthropic.com/ 获取',
+        placeholder: 'sk-ant-...'
+      },
+      'gemini': {
+        message: 'Gemini API密钥可以在 https://makersuite.google.com/app/apikey 获取',
+        placeholder: '您的API密钥'
+      },
+      'qwen': {
+        message: '通义千问API密钥可以在阿里云控制台获取',
+        placeholder: '您的API密钥'
+      },
+      'ernie': {
+        message: '文心一言需要access_token，可以在百度智能云控制台获取',
+        placeholder: 'access_token'
+      },
+      'deepseek': {
+        message: 'DeepSeek API密钥可以在 https://platform.deepseek.com/ 获取',
+        placeholder: 'sk-...'
+      },
+      'moonshot': {
+        message: 'Moonshot API密钥可以在 https://platform.moonshot.cn/ 获取',
+        placeholder: 'sk-...'
+      },
+      'custom': {
+        message: '请确保已配置API地址、请求格式和响应路径',
+        placeholder: '您的API密钥'
+      }
+    };
+    
+    return hints[providerName] || null;
   }
 
   /**

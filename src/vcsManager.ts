@@ -182,4 +182,20 @@ export class VcsManager {
     }
     await this.vcsProvider.viewHistory(filePath);
   }
+
+  // 获取文件diff信息
+  public async getFileDiff(filePath: string): Promise<string> {
+    if (!this.vcsProvider) {
+      return '';
+    }
+    return await this.vcsProvider.getFileDiff(filePath);
+  }
+
+  // 批量获取文件diff信息
+  public async getFilesDiff(filePaths: string[]): Promise<Map<string, string>> {
+    if (!this.vcsProvider) {
+      return new Map();
+    }
+    return await this.vcsProvider.getFilesDiff(filePaths);
+  }
 }
