@@ -30,3 +30,5 @@ test-fix.md
 install-and-test.sh
 install.sh
 INSTALL_DEBUG.md
+# 排除.specstory目录（包含敏感信息）
+.specstory/**
